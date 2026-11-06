@@ -1,0 +1,43 @@
+
+services:                             # ⭐ OBLIGATOIRE : les conteneurs à lancer
+  api:
+    build: .                          # le repertoire courant où se trouve le Dockerfile
+    image: shopnow-api:local          # le nom qu'on donne à l'image (comme docker build -t nom_image)
+    ports:
+      - "8000:8000"
+    environment:                      # créer des variables d'environnement dans le conteneur
+      APP_ENV: dev                    # Variable que charge l'environnement de travail
+      DB_HOST: db                     # C'est l'adresse du serveur PostgreSQL créée automatiquement par Docker Compose
+      DB_NAME: shopnow                # c'est le nom de la base des données
+      DB_USER: shopnow                # C'est l'utilisateur postgresSQL
+      DB_PASSWORD: ${DB_PASSWORD}     # Variable où est stocké le mot de passe
+    depends_on:
+      db:
+        condition: service_healthy
+      
+  db:                                 # C'est le nom du service( les autres servies pourront se connecter avec db)
+    image: postgres:16                # Docker va utiliser l'image officielle PostgreSQL version 16.
+    environment:                      # On fournit des variables d'environnement au conteneur PostgreSQL.
+      POSTGRES_DB: shopnow            # Au premier démarrage, PostgreSQL crée automatiquement une base appelée shopnow
+      POSTGRES_USER: shopnow          # Création automatique de l'utilisateur :
+      POSTGRES_PASSWORD: ${DB_PASSWORD} # mot de passe variabilisé et stocké dans .env
+    volumes:
+      - db-data:/var/lib/postgresql/data    # db-data(volume Docker), /var/lib/postgresql/data(dossier dans le conteneur)
+    healthcheck:                           #(verifie si tout va bien avec la postgres)
+      test: ["CMD-SHELL", "pg_isready -U shopnow -d shopnow"]
+      interval: 5s                           # relance toutes les 5s
+      timeout: 3s                           # delai d'attente avant de mettre echec
+      retries: 5                            # nombre d'essais
+
+
+
+volumes:                          # les volumes nommés, pour la persistance (optionnel)
+  db-data:
+    
+
+#networks:                         # les réseaux personnalisés (optionnel)
+
+
+#configs:                          # fichiers de configuration partagés (optionnel, plus rare)
+
+#secrets:                          # données sensibles (optionnel)
