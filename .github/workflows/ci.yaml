@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  lint:
+    name: lint du Dockerfile
+    run-on: ubuntu-24.04
+    steps:
+      - name: Récuperer le code
+        uses: actions/checkout@4
+    
+      - name: Analyser le Dockerfile avec hadolint
+        run:  docker run --rm -i hadolint/hadolint:v2.12.0 < Dockerfile
+  build:
+    needs: lint
+    name: Build de l'image
+    run-on: unbunt-24.04
+    steps:
+      - name: Récuperer le code
+        uses: actions/checkout@4
+
+      - name: Construire l'image
+        run: docker build -t shopnow.api:${{ github.sha }} .
+     
+      - name: Vérifier que l'image ne tourne pas en route
+        run: |
+          USER_IN_IMAGE=$(docker run --rm shopnow-api:${{ github.sha }} whoami)
+          echo "l'utilisateur dans l'image: $USER_IN_IMAGE"
+          if [ $USER_IN_IMAGE == "root"; then
+            echo "ERROR: l'image tourne en root, c'est interdit chez shopnow"
+          exit 1
+         fi
+     - name: Lister les images
+       run: docker images shopnow-api
+
+          
