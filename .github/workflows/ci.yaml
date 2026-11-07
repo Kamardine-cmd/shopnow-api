@@ -13,9 +13,9 @@ jobs:
     steps:
       - name: Récuperer le code
         uses: actions/checkout@v4
-    
+
       - name: Analyser le Dockerfile avec hadolint
-        run:  docker run --rm -i hadolint/hadolint:v2.12.0 < Dockerfile
+        run: docker run --rm -i hadolint/hadolint:v2.12.0 < Dockerfile
   build:
     name: Build de l'image
     needs: lint
@@ -26,7 +26,7 @@ jobs:
 
       - name: Construire l'image
         run: docker build -t shopnow-api:${{ github.sha }} .
-     
+
       - name: Vérifier que l'image ne tourne pas en route
         run: |
           USER_IN_IMAGE=$(docker run --rm shopnow-api:${{ github.sha }} whoami)
@@ -35,7 +35,5 @@ jobs:
             echo "ERROR: l'image tourne en root, c'est interdit chez shopnow"
           exit 1
           fi
-     - name: Lister les images
-       run: docker images shopnow-api
-
-          
+      - name: Lister les images
+        run: docker images shopnow-api
