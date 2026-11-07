@@ -34,7 +34,7 @@ jobs:
           if [ $USER_IN_IMAGE == "root"; then
             echo "ERROR: l'image tourne en root, c'est interdit chez shopnow"
           exit 1
-         fi
+          fi
      - name: Lister les images
        run: docker images shopnow-api
 
