@@ -16,7 +16,7 @@ COPY app.py .
 # 5. Sécurité (on ne tourne pas en route)
 RUN  useradd -m appuser
 
-#USER appuser
+USER appuser
 
 # 6. Documentation du port commande de demarrage
 EXPOSE 8000
