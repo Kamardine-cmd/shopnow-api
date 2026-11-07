@@ -31,7 +31,7 @@ jobs:
         run: |
           USER_IN_IMAGE=$(docker run --rm shopnow-api:${{ github.sha }} whoami)
           echo "l'utilisateur dans l'image: $USER_IN_IMAGE"
-          if [ $USER_IN_IMAGE == "root" ]; then
+          if [ $USER_IN_IMAGE == "root"; then
             echo "ERROR: l'image tourne en root, c'est interdit chez shopnow"
           exit 1
           fi
