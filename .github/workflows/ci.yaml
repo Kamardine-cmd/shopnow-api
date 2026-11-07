@@ -9,23 +9,23 @@ on:
 jobs:
   lint:
     name: lint du Dockerfile
-    run-on: ubuntu-24.04
+    runs-on: ubuntu-24.04
     steps:
       - name: Récuperer le code
-        uses: actions/checkout@4
+        uses: actions/checkout@v4
     
       - name: Analyser le Dockerfile avec hadolint
         run:  docker run --rm -i hadolint/hadolint:v2.12.0 < Dockerfile
   build:
     name: Build de l'image
     needs: lint
-    run-on: unbunt-24.04
+    runs-on: ubuntu-24.04
     steps:
       - name: Récuperer le code
-        uses: actions/checkout@4
+        uses: actions/checkout@v4
 
       - name: Construire l'image
-        run: docker build -t shopnow.api:${{ github.sha }} .
+        run: docker build -t shopnow-api:${{ github.sha }} .
      
       - name: Vérifier que l'image ne tourne pas en route
         run: |
