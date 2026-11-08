@@ -1,3 +1,43 @@
+# name: CI
+
+# on:
+#   pull_request:
+#     branches: [main]
+#   push:
+#     branches: [main]
+
+# jobs:
+#   lint:
+#     name: lint du Dockerfile
+#     runs-on: ubuntu-24.04
+#     steps:
+#       - name: Récuperer le code
+#         uses: actions/checkout@v4
+
+#       - name: Analyser le Dockerfile avec hadolint
+#         run: docker run --rm -i hadolint/hadolint:v2.12.0 < Dockerfile
+#   build:
+#     name: Build de l'image
+#     needs: lint
+#     runs-on: ubuntu-24.04
+#     steps:
+#       - name: Récuperer le code
+#         uses: actions/checkout@v4
+
+#       - name: Construire l'image
+#         run: docker build -t shopnow-api:${{ github.sha }} .
+
+#       - name: Vérifier que l'image ne tourne pas en root
+#         run: |
+#           USER_IN_IMAGE=$(docker run --rm shopnow-api:${{ github.sha }} whoami)
+#           echo "l'utilisateur dans l'image: $USER_IN_IMAGE"
+#           if [ $USER_IN_IMAGE == "root" ]; then
+#             echo "ERROR: l'image tourne en root, c'est interdit chez shopnow"
+#           exit 1
+#           fi
+#       - name: Lister les images
+#         run: docker images shopnow-api
+
 name: CI
 
 on:
@@ -6,9 +46,27 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: read
+
+env:
+  IMAGE_NAME: shopnow-api
+
 jobs:
+  secrets-scan:
+    name: scan secrets
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Récuperer le code avec tout le historique
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Réchercher des secrets avec gitleaks
+        run: docker run --rm -v "$PWD":/repo ghcr.io/gitleaks/gitleaks:v8.21.2 detect --source /repo --verbose --redact
+
   lint:
-    name: lint du Dockerfile
+    name: Lint du Dockerfile
     runs-on: ubuntu-24.04
     steps:
       - name: Récuperer le code
@@ -16,24 +74,53 @@ jobs:
 
       - name: Analyser le Dockerfile avec hadolint
         run: docker run --rm -i hadolint/hadolint:v2.12.0 < Dockerfile
+
   build:
     name: Build de l'image
-    needs: lint
+    needs: [lint, secrets-scan]
     runs-on: ubuntu-24.04
     steps:
       - name: Récuperer le code
         uses: actions/checkout@v4
 
-      - name: Construire l'image
-        run: docker build -t shopnow-api:${{ github.sha }} .
+      - name: Construire l'image Docker
+        run: docker build -t "$IMAGE_NAME:${{ github.sha }}" .
 
-      - name: Vérifier que l'image ne tourne pas en route
+      - name: Vérifier que l'image ne tourne pas en root
         run: |
-          USER_IN_IMAGE=$(docker run --rm shopnow-api:${{ github.sha }} whoami)
-          echo "l'utilisateur dans l'image: $USER_IN_IMAGE"
-          if [ $USER_IN_IMAGE == "root" ]; then
-            echo "ERROR: l'image tourne en root, c'est interdit chez shopnow"
-          exit 1
-          fi
-      - name: Lister les images
-        run: docker images shopnow-api
+          USER_IN_IMAGE=$(docker run --rm "$IMAGE_NAME:${{ github.sha }}" whoami)
+          echo "l'utilisateur dans l'image : $USER_IN_IMAGE"
+          [ "$USER_IN_IMAGE" != "root" ] || { echo "ERREUR : l'image tourne en root, c'est interdit chez ShopNow"; exit 1; }
+
+      - name: Exporter l'image dans un fichier
+        run: docker save "$IMAGE_NAME:${{ github.sha }}" -o image.tar
+
+      - name: Publier l'image comme artefact
+        uses: actions/upload-artifact@v4
+        with:
+          name: image-docker
+          path: image.tar
+          retention-days: 1
+
+  scan-image:
+    name: Scan des vulnerabilités
+    needs: build
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Récuperer l'image
+        uses: actions/download-artifact@v4
+        with:
+          name: image-docker
+
+      - name: Générer le rapport complet avec Trivy
+        run: docker run --rm -v "$PWD":/work aquasec/trivy:0.57.1 image --input /work/image.tar --format table --output /work/trivy-report.txt
+
+      - name: Publier le rapport
+        uses: actions/upload-artifact@v4
+        with:
+          name: rapport-trivy
+          path: trivy-report.txt
+          retention-days: 7
+
+      - name: Bloquer en cas de vulnérabilité CRITICAL
+        run: docker run --rm -v "$PWD":/work aquasec/trivy:0.57.1 image --input /work/image.tar --severity CRITICAL --exit-code 1
