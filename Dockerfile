@@ -13,7 +13,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY app.py .
 
 
-# 5. Sécurité (on ne tourne pas en route)
+# 5. Sécurité (on ne tourne pas en root)
 RUN  useradd -m appuser
 
 USER appuser
