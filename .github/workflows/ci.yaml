@@ -73,7 +73,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Analyser le Dockerfile avec hadolint
-        run: docker run -- rm -i hadolint/hadolint:v2.12.0 < Dockerfile
+        run: docker run --rm -i hadolint/hadolint:v2.12.0 < Dockerfile
 
   build:
     name: Build de l'image
