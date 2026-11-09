@@ -86,7 +86,7 @@ jobs:
         run: docker run --rm -v "$PWD":/work aquasec/trivy:0.57.1 image --input /work/image.tar --severity CRITICAL --exit-code 1
 
   deploy-recette:
-    name: Deploiement recette
+    name: Déploiement recette
     needs: scan-image
     if: github.event_name == 'push'
     runs-on: ubuntu-24.04
@@ -106,17 +106,17 @@ jobs:
       - name: Deployer l'image
         run: docker run -d -p 8000:8000 -e "APP_ENV=${{ vars.APP_ENV }}" --name api "$IMAGE_NAME:${{ github.sha }}"
 
-      - name: Diagnostiquer le conteneur en cas d'échec
-        if: failure()
-        run: |
-          docker ps -a
-          docker logs api
-
       - name: Smoke test
         run: |
           RESPONSE=$(curl --fail --silent --show-error --retry 10 --retry-delay 2 --retry-all-errors http://localhost:8000/)
           echo "Réponse de l'application : $RESPONSE"
           echo "$RESPONSE" | grep -q "\"env\":\"${{ vars.APP_ENV }}\"" || { echo "ERREUR : l'application ne tourne pas avec la bonne configuration"; exit 1; }
+
+      - name: Diagnostiquer le conteneur en cas d'échec
+        if: failure()
+        run: |
+          docker ps -a
+          docker logs api
 
   deploy-production:
     name: Déploiement production
@@ -144,3 +144,9 @@ jobs:
           RESPONSE=$(curl --fail --silent --show-error --retry 10 --retry-delay 2 --retry-all-errors http://localhost:8000/)
           echo "Réponse de l'application : $RESPONSE"
           echo "$RESPONSE" | grep -q "\"env\":\"${{ vars.APP_ENV }}\"" || { echo "ERREUR : l'application ne tourne pas avec la bonne configuration"; exit 1; }
+
+      - name: Diagnostiquer le conteneur en cas d'échec
+        if: failure()
+        run: |
+          docker ps -a
+          docker logs api
