@@ -84,3 +84,57 @@ jobs:
 
       - name: Bloquer en cas de vulnérabilité CRITICAL
         run: docker run --rm -v "$PWD":/work aquasec/trivy:0.57.1 image --input /work/image.tar --severity CRITICAL --exit-code 1
+
+  deploy-recette:
+    name: Deploiement recette
+    needs: scan-image
+    if: github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    environment: recette
+    concurrency:
+      group: deploy-recette
+      cancel-in-progress: false
+    steps:
+      - name: Récuperer l'image construite par la CI
+        uses: actions/download-artifact@v7
+        with:
+          name: image-docker
+
+      - name: Charger l'image
+        run: docker laod -i image.tar
+
+      - name: Deployer l'image
+        run: docker run -d -p 8000:8000 -e "APP_ENV=${{ vars.APP_ENV }}" --name api "$IMAGE_NAME=${{ github.sha }}"
+
+      - name: Smoke test
+        run: |
+          RESPONSE=$(curl --fail --silent --retry 5 --retry-delay 3 --retry-connrefused http://localhost:8000/)
+          echo "Réponse de l'application : $RESPONSE"
+          echo "$RESPONSE" | grep -q "\"env\":\"${{ vars.APP_ENV }}\"" || { echo "ERREUR : l'application ne tourne pas avec la bonne configuration"; exit 1; }
+
+  deploy-production:
+    name: Déploiement production
+    needs: deploy-recette
+    if: github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    environment: "production"
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    steps:
+      - name: Récuperer l'image construite par la CI
+        uses: actions/download-artifact@v7
+        with:
+          name: image-docker
+
+      - name: Charger l'image
+        run: docker laod -i image.tar
+
+      - name: Déployer (simulation)
+        run: docker run -d -p 8000:8000 -e APP_ENV=${{ vars.APP_ENV }} --name api "$IMAGE_NAME:${{ github.sha }}"
+
+      - name: Smoke test
+        run: |
+          RESPONSE=$(curl --fail --silent --retry 5 --retry-delay 3 --retry-connrefused http://localhost:8000/)
+          echo "Réponse de l'application : $RESPONSE"
+          echo "$RESPONSE" | grep -q "\"env\":\"${{ vars.APP_ENV }}\"" || { echo "ERREUR : l'application ne tourne pas avec la bonne configuration"; exit 1; }
