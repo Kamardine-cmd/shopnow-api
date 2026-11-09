@@ -101,10 +101,17 @@ jobs:
           name: image-docker
 
       - name: Charger l'image
+<<<<<<< HEAD
         run: docker load -i image.tar
 
       - name: Deployer l'image
         run: docker run -d -p 8000:8000 -e "APP_ENV=${{ vars.APP_ENV }}" --name api "$IMAGE_NAME:${{ github.sha }}"
+=======
+        run: docker laod -i image.tar
+
+      - name: Deployer l'image
+        run: docker run -d -p 8000:8000 -e "APP_ENV=${{ vars.APP_ENV }}" --name api "$IMAGE_NAME=${{ github.sha }}"
+>>>>>>> origin/main
 
       - name: Smoke test
         run: |
@@ -129,6 +136,7 @@ jobs:
 
       - name: Charger l'image
         run: docker load -i image.tar
+
 
       - name: Déployer (simulation)
         run: docker run -d -p 8000:8000 -e APP_ENV=${{ vars.APP_ENV }} --name api "$IMAGE_NAME:${{ github.sha }}"
