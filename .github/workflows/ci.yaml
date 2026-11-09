@@ -139,6 +139,12 @@ jobs:
       - name: Déployer (simulation)
         run: docker run -d -p 8000:8000 -e APP_ENV=${{ vars.APP_ENV }} --name api "$IMAGE_NAME:${{ github.sha }}"
 
+      - name: Diagnostiquer le conteneur
+        if: always()
+        run: |
+          docker ps -a
+          docker logs api
+
       - name: Smoke test
         run: |
           RESPONSE=$(curl --fail --silent --retry 5 --retry-delay 3 --retry-connrefused http://localhost:8000/)
